@@ -21,11 +21,6 @@ on:
         required: false
         default: ''
         type: string
-      #relay_server:
-        #description: '中继服务器地址'
-        #required: false
-        #default: ''
-        #type: string
       version_suffix:
         description: '文件名后缀'
         required: false
@@ -51,7 +46,7 @@ jobs:
           RS_PUB_KEY: ${{ github.event.inputs.rs_pub_key }}
           API_SERVER: ${{ github.event.inputs.api_server }}
           DEFAULT_PASSWORD: ${{ github.event.inputs.default_password }}
-          #RELAY_SERVER: ${{ github.event.inputs.relay_server }}
+          CUSTOM_SUFFIX: ${{ github.event.inputs.version_suffix }}
 
   call-flutter-build:
     needs: build
@@ -64,4 +59,4 @@ jobs:
       RS_PUB_KEY: ${{ github.event.inputs.rs_pub_key }}
       API_SERVER: ${{ github.event.inputs.api_server }}
       DEFAULT_PASSWORD: ${{ github.event.inputs.default_password }}
-      #RELAY_SERVER: ${{ github.event.inputs.relay_server }}
+      CUSTOM_SUFFIX: ${{ github.event.inputs.version_suffix }}
