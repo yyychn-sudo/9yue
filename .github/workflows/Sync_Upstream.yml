@@ -1,0 +1,94 @@
+name: S5-Sync Upstream
+
+on:
+  #schedule:
+    # 每天 UTC 0:00（北京时间 8:00）自动运行
+    #- cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      upstream_branch:
+        description: '上游分支（默认 master）'
+        required: false
+        default: 'master'
+        type: string
+
+jobs:
+  sync-upstream:
+    name: Sync with upstream and update custom branches
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/rustdesk/rustdesk.git
+          git fetch upstream
+
+      - name: Sync master with upstream
+        id: sync_master
+        run: |
+          git checkout master
+          git merge upstream/master --no-edit --allow-unrelated-histories || true
+          
+          # 检查是否有冲突
+          if git ls-files -u | grep -q .; then
+            echo "has_conflicts=true" >> $GITHUB_OUTPUT
+            echo "⚠️ master 分支存在冲突，请手动解决"
+            git merge --abort
+            exit 0
+          fi
+          
+          git push origin master
+          echo "✅ master 分支已同步上游"
+
+      - name: Sync custom branch (if no conflict)
+        if: steps.sync_master.outputs.has_conflicts != 'true'
+        run: |
+          git checkout custom
+          git merge master --no-edit || true
+          
+          if git ls-files -u | grep -q .; then
+            echo "⚠️ custom 分支存在冲突，请手动解决"
+            git merge --abort
+            exit 0
+          fi
+          
+          git push origin custom
+          echo "✅ custom 分支已同步 master"
+
+      - name: Sync sos branch (if no conflict)
+        if: steps.sync_master.outputs.has_conflicts != 'true'
+        run: |
+          git checkout sos
+          git merge custom --no-edit || true
+          
+          if git ls-files -u | grep -q .; then
+            echo "⚠️ sos 分支存在冲突，请手动解决"
+            git merge --abort
+            exit 0
+          fi
+          
+          git push origin sos
+          echo "✅ sos 分支已同步 custom"
+
+      - name: 处理冲突（如果存在）
+        if: steps.sync_master.outputs.has_conflicts == 'true'
+        run: |
+          echo "❌ 同步过程中发现冲突，请手动处理"
+          echo "  1. git checkout master"
+          echo "  2. git merge upstream/master"
+          echo "  3. 解决冲突后 git push origin master"
+          echo "  4. 然后依次合并到 custom 和 sos 分支"
+          exit 1
